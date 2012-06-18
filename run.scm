@@ -47,11 +47,11 @@ exec csi -s $0 "$@"
 
 
 (define (interpret test)
-  (run-shell-command (sprintf "~a -s ~a" (csi) test)))
+  (system (sprintf "~a -s ~a" (csi) test)))
 
 
 (define (run bin)
-  (run-shell-command (make-pathname "." bin)))
+  (system (make-pathname "." bin)))
 
 
 (define (display-env)
@@ -82,15 +82,13 @@ exec csi -s $0 "$@"
                (bin (pathname-strip-extension test)))
           (when (memq 'interpreted (test-modes))
             (display-info 'interpret test)
-            (let-values (((status output) (interpret test)))
-              (print output)))
+            (interpret test))
           (when (memq 'compiled (test-modes))
             (display-info 'compile bin)
             (let-values (((status output) (compile test)))
               (when (zero? status)
                 (display-info 'run bin)
-                (let-values (((_ output) (run bin)))
-                  (print output))))))
+                (run bin)))))
         (loop (cdr tests))))
     (change-directory here)))
 
