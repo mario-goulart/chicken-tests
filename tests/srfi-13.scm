@@ -970,78 +970,78 @@
 (with-test-prefix "string-filter"
 
   (pass-if "empty string, char"
-    (string=? "" (string-filter "" #\.)))
+    (string=? "" (string-filter #\. "")))
 
   (pass-if "empty string, charset"
-    (string=? "" (string-filter "" char-set:punctuation)))
+    (string=? "" (string-filter char-set:punctuation "")))
 
   (pass-if "empty string, pred"
-    (string=? "" (string-filter "" char-alphabetic?)))
+    (string=? "" (string-filter char-alphabetic? "")))
 
   (pass-if "char"
-    (string=? "..." (string-filter ".foo.bar." #\.)))
+    (string=? "..." (string-filter #\. ".foo.bar.")))
 
   (pass-if "charset"
-    (string=? "..." (string-filter ".foo.bar." char-set:punctuation)))
+    (string=? "..." (string-filter char-set:punctuation ".foo.bar.")))
 
   (pass-if "pred"
-    (string=? "foobar" (string-filter ".foo.bar." char-alphabetic?)))
+    (string=? "foobar" (string-filter char-alphabetic? ".foo.bar.")))
 
   (pass-if "char, start index"
-    (string=? ".." (string-filter ".foo.bar." #\. 2)))
+    (string=? ".." (string-filter #\. ".foo.bar." 2)))
 
   (pass-if "charset, start index"
-    (string=? ".." (string-filter ".foo.bar." char-set:punctuation 2)))
+    (string=? ".." (string-filter char-set:punctuation ".foo.bar." 2)))
 
   (pass-if "pred, start index"
-    (string=? "oobar" (string-filter ".foo.bar." char-alphabetic? 2)))
+    (string=? "oobar" (string-filter char-alphabetic? ".foo.bar." 2)))
 
   (pass-if "char, start and end index"
-    (string=? "" (string-filter ".foo.bar." #\. 2 4)))
+    (string=? "" (string-filter #\. ".foo.bar." 2 4)))
 
   (pass-if "charset, start and end index"
-    (string=? "" (string-filter ".foo.bar." char-set:punctuation 2 4)))
+    (string=? "" (string-filter char-set:punctuation ".foo.bar." 2 4)))
 
   (pass-if "pred, start and end index"
-    (string=? "oo" (string-filter ".foo.bar." char-alphabetic? 2 4))))
+    (string=? "oo" (string-filter char-alphabetic? ".foo.bar." 2 4))))
 
 (with-test-prefix "string-delete"
 
   (pass-if "empty string, char"
-    (string=? "" (string-delete "" #\.)))
+    (string=? "" (string-delete #\. "")))
 
   (pass-if "empty string, charset"
-    (string=? "" (string-delete "" char-set:punctuation)))
+    (string=? "" (string-delete char-set:punctuation "")))
 
   (pass-if "empty string, pred"
-    (string=? "" (string-delete "" char-alphabetic?)))
+    (string=? "" (string-delete char-alphabetic? "")))
 
   (pass-if "char"
-    (string=? "foobar" (string-delete ".foo.bar." #\.)))
+    (string=? "foobar" (string-delete #\. ".foo.bar.")))
 
   (pass-if "charset"
-    (string=? "foobar" (string-delete ".foo.bar." char-set:punctuation)))
+    (string=? "foobar" (string-delete char-set:punctuation ".foo.bar.")))
 
   (pass-if "pred"
-    (string=? "..." (string-delete ".foo.bar." char-alphabetic?)))
+    (string=? "..." (string-delete char-alphabetic? ".foo.bar.")))
 
   (pass-if "char, start index"
-    (string=? "oobar" (string-delete ".foo.bar." #\. 2)))
+    (string=? "oobar" (string-delete #\. ".foo.bar." 2)))
 
   (pass-if "charset, start index"
-    (string=? "oobar" (string-delete ".foo.bar." char-set:punctuation 2)))
+    (string=? "oobar" (string-delete char-set:punctuation ".foo.bar." 2)))
 
   (pass-if "pred, start index"
-    (string=? ".." (string-delete ".foo.bar." char-alphabetic? 2)))
+    (string=? ".." (string-delete char-alphabetic? ".foo.bar." 2)))
 
   (pass-if "char, start and end index"
-    (string=? "oo" (string-delete ".foo.bar." #\. 2 4)))
+    (string=? "oo" (string-delete #\. ".foo.bar." 2 4)))
 
   (pass-if "charset, start and end index"
-    (string=? "oo" (string-delete ".foo.bar." char-set:punctuation 2 4)))
+    (string=? "oo" (string-delete char-set:punctuation ".foo.bar." 2 4)))
 
   (pass-if "pred, start and end index"
-    (string=? "" (string-delete ".foo.bar." char-alphabetic? 2 4))))
+    (string=? "" (string-delete char-alphabetic? ".foo.bar." 2 4))))
 
 (with-test-prefix "string-map"
 
@@ -1515,25 +1515,26 @@
                         char-set:lower-case))
 
 (test* "string-filter" "rrrr"
-       (string-filter "Help make programs run, run, RUN!" #\r ))
+       (string-filter #\r "Help make programs run, run, RUN!"))
 (test* "string-filter" "HelpmakeprogramsrunrunRUN"
-       (string-filter "Help make programs run, run, RUN!"
-                      char-set:letter))
+       (string-filter char-set:letter "Help make programs run, run, RUN!"))
+
 (test* "string-filter" "programsrunrun"
-       (string-filter "Help make programs run, run, RUN!"
-                      (lambda (c) (char-lower-case? c)) 10))
+       (string-filter (lambda (c) (char-lower-case? c))
+                      "Help make programs run, run, RUN!"
+                      10))
 (test* "string-filter" ""
-       (string-filter "" (lambda (c) (char-lower-case? c))))
+       (string-filter (lambda (c) (char-lower-case? c)) ""))
 (test* "string-delete" "Help make pogams un, un, RUN!"
-       (string-delete "Help make programs run, run, RUN!" #\r))
+       (string-delete #\r "Help make programs run, run, RUN!"))
 (test* "string-delete" "   , , !"
-       (string-delete "Help make programs run, run, RUN!"
-                      char-set:letter))
+       (string-delete char-set:letter "Help make programs run, run, RUN!"))
 (test* "string-delete" " , , RUN!"
-       (string-delete "Help make programs run, run, RUN!"
-                      (lambda (c) (char-lower-case? c)) 10))
+       (string-delete (lambda (c) (char-lower-case? c))
+                      "Help make programs run, run, RUN!"
+                      10))
 (test* "string-delete" ""
-       (string-delete "" (lambda (c) (char-lower-case? c))))
+       (string-delete (lambda (c) (char-lower-case? c)) ""))
 
 ;;; Additional tests so that the suite at least touches all
 ;;; the functions.
