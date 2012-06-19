@@ -14,24 +14,8 @@
 ;
 ; $Id: srfi-13-test.sch 1766 2004-01-02 20:56:58Z lth $
 
-;(cond-expand (srfi-13))
-(use srfi-13)
+(use srfi-13 test)
 
-(define total-errors 0)
-(define total-tests 0)
-(define test-prefix #f)
-
-(define (writeln . xs)
-  (for-each display xs)
-  (newline))
-
-(define (fail token . more)
-  (set! total-errors (+ total-errors 1))
-  (if test-prefix
-      (writeln "Error: test failed in " test-prefix ": ")
-      (writeln "Error: test failed: "))
-  (apply writeln "   " token "  " more)
-  #f)
 
 ;;;; Test suite for SRFI-13 as implemented by Guile
 ;;;;
@@ -57,9 +41,9 @@
 ;;;; From http://www.glug.org/snap/guile-core/test-suite/tests/srfi-13.test
 ;;;; Test dated 27 April 2002, downloaded 02 January 2004
 
-;(require 'common-syntax)		; FLUID-LET
+(define test-prefix #f)
 
-(define-syntax with-test-prefix 
+(define-syntax with-test-prefix
   (syntax-rules ()
     ((with-test-prefix pfix form ...)
      (fluid-let ((test-prefix 'pfix))
@@ -68,21 +52,19 @@
 (define-syntax pass-if
   (syntax-rules ()
     ((pass-if ?desc ?expr)
-     (begin
-       ;(writeln '?expr)
-       (set! total-tests (+ total-tests 1))
-       (let ((desc ?desc)
-	     (expr ?expr))
-	 (if (not expr)
-	     (fail desc '?expr expr)))))
+     (let ((desc (if test-prefix
+                     (string-append test-prefix " - " ?desc)
+                     ?desc))
+           (expr ?expr))
+       (test desc #t expr)))
     ((pass-if ?desc ?expr ?test)
-     (begin
-       ;(writeln '?expr)
-       (set! total-tests (+ total-tests 1))
-       (let ((desc ?desc))
-	 ?expr
-	 (if (not ?test)
-	     (fail desc '?expr)))))))
+     (let ((desc (if test-prefix
+                     (string-append test-prefix " - " ?desc)
+                     ?desc)))
+       ?expr
+       (test desc #t ?test)))))
+
+(test-begin "srfi-13")
 
 (with-test-prefix "string-any"
 
@@ -149,7 +131,7 @@
 
   (pass-if "variable fill-char"
     (string=? (string-tabulate
-	       (lambda (idx) (integer->char (+ idx 32))) 10) " !\"#$%&'()")))
+               (lambda (idx) (integer->char (+ idx 32))) 10) " !\"#$%&'()")))
 
 (with-test-prefix "string->list"
 
@@ -212,7 +194,7 @@
 
   (pass-if "two strings, explicit infix"
      (string=? "bla|delim|fasel" (string-join '("bla" "fasel") "|delim|"
-					      'infix)))
+                                              'infix)))
 
 ;   (pass-if-exception "empty list, strict infix"
 ;      exception:strict-infix-grammar
@@ -226,7 +208,7 @@
 
   (pass-if "two strings, strict infix"
      (string=? "foo|delim|bar" (string-join '("foo" "bar") "|delim|"
-					    'strict-infix)))
+                                            'strict-infix)))
 
   (pass-if "empty list, prefix"
      (string=? "" (string-join '() "|delim|" 'prefix)))
@@ -239,7 +221,7 @@
 
   (pass-if "two strings, prefix"
      (string=? "|delim|foo|delim|bar" (string-join '("foo" "bar") "|delim|"
-						   'prefix)))
+                                                   'prefix)))
 
   (pass-if "empty list, suffix"
      (string=? "" (string-join '() "|delim|" 'suffix)))
@@ -252,7 +234,7 @@
 
   (pass-if "two strings, suffix"
      (string=? "foo|delim|bar|delim|" (string-join '("foo" "bar") "|delim|"
-						   'suffix))))
+                                                   'suffix))))
 
 (with-test-prefix "string-copy"
 
@@ -284,10 +266,10 @@
 
   (pass-if "non-empty string"
     (string=? "welld, oh yeah!"
-	      (let* ((s "hello")
-		     (t "world, oh yeah!"))
-		(string-copy! t 1 s 1 3)
-		t))))
+              (let* ((s "hello")
+                     (t "world, oh yeah!"))
+                (string-copy! t 1 s 1 3)
+                t))))
 
 (with-test-prefix "string-take"
 
@@ -957,15 +939,15 @@
 
   (pass-if "charset"
     (equal? '("foo" "bar" "!a") (string-tokenize "foo\tbar !a"
-						char-set:graphic)))
+                                                char-set:graphic)))
 
   (pass-if "charset, start index"
     (equal? '("oo" "bar" "!a") (string-tokenize "foo\tbar !a"
-						char-set:graphic 1)))
+                                                char-set:graphic 1)))
 
   (pass-if "charset, start and end index"
     (equal? '("oo" "bar" "!") (string-tokenize "foo\tbar !a"
-					       char-set:graphic 1 9))))
+                                               char-set:graphic 1 9))))
 
 (with-test-prefix "string-filter"
 
@@ -1104,232 +1086,219 @@
 ;;
 ;; See http://sourceforge.net/projects/gauche/
 
-(define-syntax test*
-  (syntax-rules ()
-    ((test* key expected form)
-     (let ((v form))
-       (set! total-tests (+ total-tests 1))
-       (if (not (equal? v expected))
-	   (fail 'key "  " expected "  " v))))
-    ((test* key expected form same?)
-     (let ((v form))
-       (set! total-tests (+ total-tests 1))
-       (if (not (same? v expected))
-	   (fail 'key "  " expected "  " v))))))
-
-(test* "string-null?" #f (string-null? "abc"))
-(test* "string-null?" #t (string-null? ""))
-(test* "string-every" #t (string-every #\a ""))
-(test* "string-every" #t (string-every #\a "aaaa"))
-(test* "string-every" #f (string-every #\a "aaba"))
-(test* "string-every" #t (string-every char-set:lower-case "aaba"))
-(test* "string-every" #f (string-every char-set:lower-case "aAba"))
-(test* "string-every" #t (string-every char-set:lower-case ""))
-(test* "string-every" #t (string-every (lambda (x) (char-ci=? x #\a)) "aAaA"))
-(test* "string-every" #f (string-every (lambda (x) (char-ci=? x #\a)) "aAbA"))
-(test* "string-every" (char->integer #\A)
+(test "string-null?" #f (string-null? "abc"))
+(test "string-null?" #t (string-null? ""))
+(test "string-every" #t (string-every #\a ""))
+(test "string-every" #t (string-every #\a "aaaa"))
+(test "string-every" #f (string-every #\a "aaba"))
+(test "string-every" #t (string-every char-set:lower-case "aaba"))
+(test "string-every" #f (string-every char-set:lower-case "aAba"))
+(test "string-every" #t (string-every char-set:lower-case ""))
+(test "string-every" #t (string-every (lambda (x) (char-ci=? x #\a)) "aAaA"))
+(test "string-every" #f (string-every (lambda (x) (char-ci=? x #\a)) "aAbA"))
+(test "string-every" (char->integer #\A)
        (string-every (lambda (x) (char->integer x)) "aAbA"))
-(test* "string-every" #t
+(test "string-every" #t
        (string-every (lambda (x) (error "hoge")) ""))
-(test* "string-any" #t (string-any #\a "aaaa"))
-(test* "string-any" #f (string-any #\a "Abcd"))
-(test* "string-any" #f (string-any #\a ""))
-(test* "string-any" #t (string-any char-set:lower-case "ABcD"))
-(test* "string-any" #f (string-any char-set:lower-case "ABCD"))
-(test* "string-any" #f (string-any char-set:lower-case ""))
-(test* "string-any" #t (string-any (lambda (x) (char-ci=? x #\a)) "CAaA"))
-(test* "string-any" #f (string-any (lambda (x) (char-ci=? x #\a)) "ZBRC"))
-(test* "string-any" #f (string-any (lambda (x) (char-ci=? x #\a)) ""))
-(test* "string-any" (char->integer #\a)
+(test "string-any" #t (string-any #\a "aaaa"))
+(test "string-any" #f (string-any #\a "Abcd"))
+(test "string-any" #f (string-any #\a ""))
+(test "string-any" #t (string-any char-set:lower-case "ABcD"))
+(test "string-any" #f (string-any char-set:lower-case "ABCD"))
+(test "string-any" #f (string-any char-set:lower-case ""))
+(test "string-any" #t (string-any (lambda (x) (char-ci=? x #\a)) "CAaA"))
+(test "string-any" #f (string-any (lambda (x) (char-ci=? x #\a)) "ZBRC"))
+(test "string-any" #f (string-any (lambda (x) (char-ci=? x #\a)) ""))
+(test "string-any" (char->integer #\a)
        (string-any (lambda (x) (char->integer x)) "aAbA"))
-(test* "string-tabulate" "0123456789"
+(test "string-tabulate" "0123456789"
        (string-tabulate (lambda (code)
                           (integer->char (+ code (char->integer #\0))))
                         10))
-(test* "string-tabulate" ""
+(test "string-tabulate" ""
        (string-tabulate (lambda (code)
                           (integer->char (+ code (char->integer #\0))))
                         0))
-(test* "reverse-list->string" "cBa"
+(test "reverse-list->string" "cBa"
        (reverse-list->string '(#\a #\B #\c)))
-(test* "reverse-list->string" ""
+(test "reverse-list->string" ""
        (reverse-list->string '()))
 ; string-join : Gauche builtin.
-(test* "substring/shared" "cde" (substring/shared "abcde" 2))
-(test* "substring/shared" "cd"  (substring/shared "abcde" 2 4))
-(test* "string-copy!" "abCDEfg"
+(test "substring/shared" "cde" (substring/shared "abcde" 2))
+(test "substring/shared" "cd"  (substring/shared "abcde" 2 4))
+(test "string-copy!" "abCDEfg"
        (let ((x (string-copy "abcdefg")))
          (string-copy! x 2 "CDE")
          x))
-(test* "string-copy!" "abCDEfg"
+(test "string-copy!" "abCDEfg"
        (let ((x (string-copy "abcdefg")))
          (string-copy! x 2 "ZABCDE" 3)
          x))
-(test* "string-copy!" "abCDEfg"
+(test "string-copy!" "abCDEfg"
        (let ((x (string-copy "abcdefg")))
          (string-copy! x 2 "ZABCDEFG" 3 6)
          x))
-(test* "string-take" "Pete S"  (string-take "Pete Szilagyi" 6))
-(test* "string-take" ""        (string-take "Pete Szilagyi" 0))
-(test* "string-take" "Pete Szilagyi" (string-take "Pete Szilagyi" 13))
-(test* "string-drop" "zilagyi" (string-drop "Pete Szilagyi" 6))
-(test* "string-drop" "Pete Szilagyi" (string-drop "Pete Szilagyi" 0))
-(test* "string-drop" ""        (string-drop "Pete Szilagyi" 13))
+(test "string-take" "Pete S"  (string-take "Pete Szilagyi" 6))
+(test "string-take" ""        (string-take "Pete Szilagyi" 0))
+(test "string-take" "Pete Szilagyi" (string-take "Pete Szilagyi" 13))
+(test "string-drop" "zilagyi" (string-drop "Pete Szilagyi" 6))
+(test "string-drop" "Pete Szilagyi" (string-drop "Pete Szilagyi" 0))
+(test "string-drop" ""        (string-drop "Pete Szilagyi" 13))
 
-(test* "string-take-right" "rules" (string-take-right "Beta rules" 5))
-(test* "string-take-right" ""      (string-take-right "Beta rules" 0))
-(test* "string-take-right" "Beta rules" (string-take-right "Beta rules" 10))
-(test* "string-drop-right" "Beta " (string-drop-right "Beta rules" 5))
-(test* "string-drop-right" "Beta rules" (string-drop-right "Beta rules" 0))
-(test* "string-drop-right" ""      (string-drop-right "Beta rules" 10))
+(test "string-take-right" "rules" (string-take-right "Beta rules" 5))
+(test "string-take-right" ""      (string-take-right "Beta rules" 0))
+(test "string-take-right" "Beta rules" (string-take-right "Beta rules" 10))
+(test "string-drop-right" "Beta " (string-drop-right "Beta rules" 5))
+(test "string-drop-right" "Beta rules" (string-drop-right "Beta rules" 0))
+(test "string-drop-right" ""      (string-drop-right "Beta rules" 10))
 
-(test* "string-pad" "  325" (string-pad "325" 5))
-(test* "string-pad" "71325" (string-pad "71325" 5))
-(test* "string-pad" "71325" (string-pad "8871325" 5))
-(test* "string-pad" "~~325" (string-pad "325" 5 #\~))
-(test* "string-pad" "~~~25" (string-pad "325" 5 #\~ 1))
-(test* "string-pad" "~~~~2" (string-pad "325" 5 #\~ 1 2))
-(test* "string-pad-right" "325  " (string-pad-right "325" 5))
-(test* "string-pad-right" "71325" (string-pad-right "71325" 5))
-(test* "string-pad-right" "88713" (string-pad-right "8871325" 5))
-(test* "string-pad-right" "325~~" (string-pad-right "325" 5 #\~))
-(test* "string-pad-right" "25~~~" (string-pad-right "325" 5 #\~ 1))
-(test* "string-pad-right" "2~~~~" (string-pad-right "325" 5 #\~ 1 2))
+(test "string-pad" "  325" (string-pad "325" 5))
+(test "string-pad" "71325" (string-pad "71325" 5))
+(test "string-pad" "71325" (string-pad "8871325" 5))
+(test "string-pad" "~~325" (string-pad "325" 5 #\~))
+(test "string-pad" "~~~25" (string-pad "325" 5 #\~ 1))
+(test "string-pad" "~~~~2" (string-pad "325" 5 #\~ 1 2))
+(test "string-pad-right" "325  " (string-pad-right "325" 5))
+(test "string-pad-right" "71325" (string-pad-right "71325" 5))
+(test "string-pad-right" "88713" (string-pad-right "8871325" 5))
+(test "string-pad-right" "325~~" (string-pad-right "325" 5 #\~))
+(test "string-pad-right" "25~~~" (string-pad-right "325" 5 #\~ 1))
+(test "string-pad-right" "2~~~~" (string-pad-right "325" 5 #\~ 1 2))
 
-(test* "string-trim"  "a b c d  \n"
+(test "string-trim"  "a b c d  \n"
        (string-trim "  \t  a b c d  \n"))
-(test* "string-trim"  "\t  a b c d  \n"
+(test "string-trim"  "\t  a b c d  \n"
        (string-trim "  \t  a b c d  \n" #\space))
-(test* "string-trim"  "a b c d  \n"
+(test "string-trim"  "a b c d  \n"
        (string-trim "4358948a b c d  \n" char-set:digit))
 
-(test* "string-trim-right"  "  \t  a b c d"
+(test "string-trim-right"  "  \t  a b c d"
        (string-trim-right "  \t  a b c d  \n"))
-(test* "string-trim-right"  "  \t  a b c d  "
+(test "string-trim-right"  "  \t  a b c d  "
        (string-trim-right "  \t  a b c d  \n" (char-set #\newline)))
-(test* "string-trim-right"  "349853a b c d"
+(test "string-trim-right"  "349853a b c d"
        (string-trim-right "349853a b c d03490" char-set:digit))
 
-(test* "string-trim-both"  "a b c d"
+(test "string-trim-both"  "a b c d"
        (string-trim-both "  \t  a b c d  \n"))
-(test* "string-trim-both"  "  \t  a b c d  "
+(test "string-trim-both"  "  \t  a b c d  "
        (string-trim-both "  \t  a b c d  \n" (char-set #\newline)))
-(test* "string-trim-both"  "a b c d"
+(test "string-trim-both"  "a b c d"
        (string-trim-both "349853a b c d03490" char-set:digit))
 
 ;; string-fill - in string.scm
 
-(test* "string-compare" 5
+(test "string-compare" 5
        (string-compare "The cat in the hat" "abcdefgh"
                        values values values
                        4 6 2 4))
-(test* "string-compare-ci" 5
+(test "string-compare-ci" 5
        (string-compare-ci "The cat in the hat" "ABCDEFGH"
                           values values values
                           4 6 2 4))
 
 ;; TODO: bunch of string= families
 
-(test* "string-prefix-length" 5
+(test "string-prefix-length" 5
        (string-prefix-length "cancaNCAM" "cancancan"))
-(test* "string-prefix-length-ci" 8
+(test "string-prefix-length-ci" 8
        (string-prefix-length-ci "cancaNCAM" "cancancan"))
-(test* "string-suffix-length" 2
+(test "string-suffix-length" 2
        (string-suffix-length "CanCan" "cankancan"))
-(test* "string-suffix-length-ci" 5
+(test "string-suffix-length-ci" 5
        (string-suffix-length-ci "CanCan" "cankancan"))
 
-(test* "string-prefix?" #t    (string-prefix? "abcd" "abcdefg"))
-(test* "string-prefix?" #f    (string-prefix? "abcf" "abcdefg"))
-(test* "string-prefix-ci?" #t (string-prefix-ci? "abcd" "aBCDEfg"))
-(test* "string-prefix-ci?" #f (string-prefix-ci? "abcf" "aBCDEfg"))
-(test* "string-suffix?" #t    (string-suffix? "defg" "abcdefg"))
-(test* "string-suffix?" #f    (string-suffix? "aefg" "abcdefg"))
-(test* "string-suffix-ci?" #t (string-suffix-ci? "defg" "aBCDEfg"))
-(test* "string-suffix-ci?" #f (string-suffix-ci? "aefg" "aBCDEfg"))
+(test "string-prefix?" #t    (string-prefix? "abcd" "abcdefg"))
+(test "string-prefix?" #f    (string-prefix? "abcf" "abcdefg"))
+(test "string-prefix-ci?" #t (string-prefix-ci? "abcd" "aBCDEfg"))
+(test "string-prefix-ci?" #f (string-prefix-ci? "abcf" "aBCDEfg"))
+(test "string-suffix?" #t    (string-suffix? "defg" "abcdefg"))
+(test "string-suffix?" #f    (string-suffix? "aefg" "abcdefg"))
+(test "string-suffix-ci?" #t (string-suffix-ci? "defg" "aBCDEfg"))
+(test "string-suffix-ci?" #f (string-suffix-ci? "aefg" "aBCDEfg"))
 
-(test* "string-index #1" 4
+(test "string-index #1" 4
        (string-index "abcd:efgh:ijkl" #\:))
-(test* "string-index #2" 4
+(test "string-index #2" 4
        (string-index "abcd:efgh;ijkl" (char-set-complement char-set:letter)))
-(test* "string-index #3" #f
+(test "string-index #3" #f
        (string-index "abcd:efgh;ijkl" char-set:digit))
-(test* "string-index #4" 9
+(test "string-index #4" 9
        (string-index "abcd:efgh:ijkl" #\: 5))
-(test* "string-index-right #1" 4
+(test "string-index-right #1" 4
        (string-index-right "abcd:efgh;ijkl" #\:))
-(test* "string-index-right #2" 9
+(test "string-index-right #2" 9
        (string-index-right "abcd:efgh;ijkl" (char-set-complement char-set:letter)))
-(test* "string-index-right #3" #f
+(test "string-index-right #3" #f
        (string-index-right "abcd:efgh;ijkl" char-set:digit))
-(test* "string-index-right #4" 4
+(test "string-index-right #4" 4
        (string-index-right "abcd:efgh;ijkl" (char-set-complement char-set:letter) 2 5))
 
-(test* "string-count #1" 2
+(test "string-count #1" 2
        (string-count "abc def\tghi jkl" #\space))
-(test* "string-count #2" 3
+(test "string-count #2" 3
        (string-count "abc def\tghi jkl" char-set:whitespace))
-(test* "string-count #3" 2
+(test "string-count #3" 2
        (string-count "abc def\tghi jkl" char-set:whitespace 4))
-(test* "string-count #4" 1
+(test "string-count #4" 1
        (string-count "abc def\tghi jkl" char-set:whitespace 4 9))
-(test* "string-contains" 3
+(test "string-contains" 3
        (string-contains "Ma mere l'oye" "mer"))
-(test* "string-contains" #f
+(test "string-contains" #f
        (string-contains "Ma mere l'oye" "Mer"))
-(test* "string-contains-ci" 3
+(test "string-contains-ci" 3
        (string-contains-ci "Ma mere l'oye" "Mer"))
-(test* "string-contains-ci" #f
+(test "string-contains-ci" #f
        (string-contains-ci "Ma mere l'oye" "Meer"))
 
-(test* "string-titlecase" "--Capitalize This Sentence."
+(test "string-titlecase" "--Capitalize This Sentence."
        (string-titlecase "--capitalize tHIS sentence."))
-(test* "string-titlecase" "3Com Makes Routers."
+(test "string-titlecase" "3Com Makes Routers."
        (string-titlecase "3com makes routers."))
-(test* "string-titlecase!" "alSo Whatever"
+(test "string-titlecase!" "alSo Whatever"
        (let ((s (string-copy "also whatever")))
          (string-titlecase! s 2 9)
          s))
 
-(test* "string-upcase" "SPEAK LOUDLY"
+(test "string-upcase" "SPEAK LOUDLY"
        (string-upcase "speak loudly"))
-(test* "string-upcase" "PEAK"
+(test "string-upcase" "PEAK"
        (string-upcase "speak loudly" 1 5))
-(test* "string-upcase!" "sPEAK loudly"
+(test "string-upcase!" "sPEAK loudly"
        (let ((s (string-copy "speak loudly")))
          (string-upcase! s 1 5)
          s))
 
-(test* "string-downcase" "speak softly"
+(test "string-downcase" "speak softly"
        (string-downcase "SPEAK SOFTLY"))
-(test* "string-downcase" "peak"
+(test "string-downcase" "peak"
        (string-downcase "SPEAK SOFTLY" 1 5))
-(test* "string-downcase!" "Speak SOFTLY"
+(test "string-downcase!" "Speak SOFTLY"
        (let ((s (string-copy "SPEAK SOFTLY")))
          (string-downcase! s 1 5)
          s))
 
-(test* "string-reverse" "nomel on nolem on"
+(test "string-reverse" "nomel on nolem on"
        (string-reverse "no melon no lemon"))
-(test* "string-reverse" "nomel on"
+(test "string-reverse" "nomel on"
        (string-reverse "no melon no lemon" 9))
-(test* "string-reverse" "on"
+(test "string-reverse" "on"
        (string-reverse "no melon no lemon" 9 11))
-(test* "string-reverse!" "nomel on nolem on"
+(test "string-reverse!" "nomel on nolem on"
        (let ((s (string-copy "no melon no lemon")))
          (string-reverse! s) s))
-(test* "string-reverse!" "no melon nomel on"
+(test "string-reverse!" "no melon nomel on"
        (let ((s (string-copy "no melon no lemon")))
          (string-reverse! s 9) s))
-(test* "string-reverse!" "no melon on lemon"
+(test "string-reverse!" "no melon on lemon"
        (let ((s (string-copy "no melon no lemon")))
          (string-reverse! s 9 11) s))
 
-(test* "string-append" #f
+(test "string-append" #f
        (let ((s "test")) (eq? s (string-append s))))
-(test* "string-concatenate" #f
+(test "string-concatenate" #f
        (let ((s "test")) (eq? s (string-concatenate (list s)))))
-(test* "string-concatenate" "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+(test "string-concatenate" "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
        (string-concatenate
         '("A" "B" "C" "D" "E" "F" "G" "H"
           "I" "J" "K" "L" "M" "N" "O" "P"
@@ -1337,7 +1306,7 @@
           "a" "b" "c" "d" "e" "f" "g" "h"
           "i" "j" "k" "l" "m" "n" "o" "p"
           "q" "r" "s" "t" "u" "v" "w" "x" "y" "z")))
-(test* "string-concatenate/shared" "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+(test "string-concatenate/shared" "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
        (string-concatenate/shared
         '("A" "B" "C" "D" "E" "F" "G" "H"
           "I" "J" "K" "L" "M" "N" "O" "P"
@@ -1345,7 +1314,7 @@
           "a" "b" "c" "d" "e" "f" "g" "h"
           "i" "j" "k" "l" "m" "n" "o" "p"
           "q" "r" "s" "t" "u" "v" "w" "x" "y" "z")))
-(test* "string-concatenate-reverse" "zyxwvutsrqponmlkjihgfedcbaZYXWVUTSRQPONMLKJIHGFEDCBA"
+(test "string-concatenate-reverse" "zyxwvutsrqponmlkjihgfedcbaZYXWVUTSRQPONMLKJIHGFEDCBA"
        (string-concatenate-reverse
         '("A" "B" "C" "D" "E" "F" "G" "H"
           "I" "J" "K" "L" "M" "N" "O" "P"
@@ -1353,10 +1322,10 @@
           "a" "b" "c" "d" "e" "f" "g" "h"
           "i" "j" "k" "l" "m" "n" "o" "p"
           "q" "r" "s" "t" "u" "v" "w" "x" "y" "z")))
-(test* "string-concatenate-reverse" #f
+(test "string-concatenate-reverse" #f
        (let ((s "test"))
          (eq? s (string-concatenate-reverse (list s)))))
-(test* "string-concatenate-reverse/shared" "zyxwvutsrqponmlkjihgfedcbaZYXWVUTSRQPONMLKJIHGFEDCBA"
+(test "string-concatenate-reverse/shared" "zyxwvutsrqponmlkjihgfedcbaZYXWVUTSRQPONMLKJIHGFEDCBA"
        (string-concatenate-reverse/shared
         '("A" "B" "C" "D" "E" "F" "G" "H"
           "I" "J" "K" "L" "M" "N" "O" "P"
@@ -1365,65 +1334,65 @@
           "i" "j" "k" "l" "m" "n" "o" "p"
           "q" "r" "s" "t" "u" "v" "w" "x" "y" "z")))
 
-(test* "string-map" "svool"
+(test "string-map" "svool"
        (string-map (lambda (c)
                      (integer->char (- 219 (char->integer c))))
                    "hello"))
-(test* "string-map" "vool"
+(test "string-map" "vool"
        (string-map (lambda (c)
                      (integer->char (- 219 (char->integer c))))
                    "hello" 1))
-(test* "string-map" "vo"
+(test "string-map" "vo"
        (string-map (lambda (c)
                      (integer->char (- 219 (char->integer c))))
                    "hello" 1 3))
-(test* "string-map!" "svool"
+(test "string-map!" "svool"
        (let ((s (string-copy "hello")))
          (string-map! (lambda (c)
                         (integer->char (- 219 (char->integer c))))
                       s)
          s))
-(test* "string-map!" "hvool"
+(test "string-map!" "hvool"
        (let ((s (string-copy "hello")))
          (string-map! (lambda (c)
                         (integer->char (- 219 (char->integer c))))
                       s 1)
          s))
-(test* "string-map!" "hvolo"
+(test "string-map!" "hvolo"
        (let ((s (string-copy "hello")))
          (string-map! (lambda (c)
                         (integer->char (- 219 (char->integer c))))
                       s 1 3)
          s))
 
-(test* "string-fold" '(#\o #\l #\l #\e #\h . #t)
+(test "string-fold" '(#\o #\l #\l #\e #\h . #t)
        (string-fold cons #t "hello"))
-(test* "string-fold" '(#\l #\e . #t)
+(test "string-fold" '(#\l #\e . #t)
        (string-fold cons #t "hello" 1 3))
-(test* "string-fold-right" '(#\h #\e #\l #\l #\o . #t)
+(test "string-fold-right" '(#\h #\e #\l #\l #\o . #t)
        (string-fold-right cons #t "hello"))
-(test* "string-fold-right" '(#\e #\l . #t)
+(test "string-fold-right" '(#\e #\l . #t)
        (string-fold-right cons #t "hello" 1 3))
 
-(test* "string-unfold" "hello"
+(test "string-unfold" "hello"
        (string-unfold null? car cdr '(#\h #\e #\l #\l #\o)))
-(test* "string-unfold" "hi hello"
+(test "string-unfold" "hi hello"
        (string-unfold null? car cdr '(#\h #\e #\l #\l #\o) "hi "))
-(test* "string-unfold" "hi hello ho"
+(test "string-unfold" "hi hello ho"
        (string-unfold null? car cdr
                       '(#\h #\e #\l #\l #\o) "hi "
                       (lambda (x) " ho")))
 
-(test* "string-unfold-right" "olleh"
+(test "string-unfold-right" "olleh"
        (string-unfold-right null? car cdr '(#\h #\e #\l #\l #\o)))
-(test* "string-unfold-right" "olleh hi"
+(test "string-unfold-right" "olleh hi"
        (string-unfold-right null? car cdr '(#\h #\e #\l #\l #\o) " hi"))
-(test* "string-unfold-right" "ho olleh hi"
+(test "string-unfold-right" "ho olleh hi"
        (string-unfold-right null? car cdr
                             '(#\h #\e #\l #\l #\o) " hi"
                             (lambda (x) "ho ")))
 
-(test* "string-for-each" "CLtL"
+(test "string-for-each" "CLtL"
        (let ((out (open-output-string))
              (prev #f))
          (string-for-each (lambda (c)
@@ -1434,7 +1403,7 @@
                           "Common Lisp, the Language")
 
          (get-output-string out)))
-(test* "string-for-each" "oLtL"
+(test "string-for-each" "oLtL"
        (let ((out (open-output-string))
              (prev #f))
          (string-for-each (lambda (c)
@@ -1444,7 +1413,7 @@
                             (set! prev c))
                           "Common Lisp, the Language" 1)
          (get-output-string out)))
-(test* "string-for-each" "oL"
+(test "string-for-each" "oL"
        (let ((out (open-output-string))
              (prev #f))
          (string-for-each (lambda (c)
@@ -1454,216 +1423,209 @@
                             (set! prev c))
                           "Common Lisp, the Language" 1 10)
          (get-output-string out)))
-(test* "string-for-each-index" '(4 3 2 1 0)
+(test "string-for-each-index" '(4 3 2 1 0)
        (let ((r '()))
          (string-for-each-index (lambda (i) (set! r (cons i r))) "hello")
          r))
-(test* "string-for-each-index" '(4 3 2 1)
+(test "string-for-each-index" '(4 3 2 1)
        (let ((r '()))
          (string-for-each-index (lambda (i) (set! r (cons i r))) "hello" 1)
          r))
-(test* "string-for-each-index" '(2 1)
+(test "string-for-each-index" '(2 1)
        (let ((r '()))
          (string-for-each-index (lambda (i) (set! r (cons i r))) "hello" 1 3)
          r))
 
-(test* "xsubstring" "cdefab"
+(test "xsubstring" "cdefab"
        (xsubstring "abcdef" 2))
-(test* "xsubstring" "efabcd"
+(test "xsubstring" "efabcd"
        (xsubstring "abcdef" -2))
-(test* "xsubstring" "abcabca"
+(test "xsubstring" "abcabca"
        (xsubstring "abc" 0 7))
-(test* "xsubstring" "abcabca"
-       (xsubstring "abc"
-                   30000000000000000000000000000000
-                   30000000000000000000000000000007))
-(test* "xsubstring" "defdefd"
+;; (test "xsubstring" "abcabca"
+;;        (xsubstring "abc"
+;;                    30000000000000000000000000000000
+;;                    30000000000000000000000000000007))
+(test "xsubstring" "defdefd"
        (xsubstring "abcdefg" 0 7 3 6))
-(test* "xsubstring" ""
+(test "xsubstring" ""
        (xsubstring "abcdefg" 9 9 3 6))
 
-(test* "string-xcopy!" "ZZcdefabZZ"
+(test "string-xcopy!" "ZZcdefabZZ"
        (let ((s (make-string 10 #\Z)))
          (string-xcopy! s 2 "abcdef" 2)
          s))
-(test* "string-xcopy!" "ZZdefdefZZ"
+(test "string-xcopy!" "ZZdefdefZZ"
        (let ((s (make-string 10 #\Z)))
          (string-xcopy! s 2 "abcdef" 0 6 3)
          s))
 
-(test* "string-replace" "abcdXYZghi"
+(test "string-replace" "abcdXYZghi"
        (string-replace "abcdefghi" "XYZ" 4 6))
-(test* "string-replace" "abcdZghi"
+(test "string-replace" "abcdZghi"
        (string-replace "abcdefghi" "XYZ" 4 6 2))
-(test* "string-replace" "abcdZefghi"
+(test "string-replace" "abcdZefghi"
        (string-replace "abcdefghi" "XYZ" 4 4 2))
-(test* "string-replace" "abcdefghi"
+(test "string-replace" "abcdefghi"
        (string-replace "abcdefghi" "XYZ" 4 4 1 1))
-(test* "string-replace" "abcdhi"
+(test "string-replace" "abcdhi"
        (string-replace "abcdefghi" "" 4 7))
 
-(test* "string-tokenize" '("Help" "make" "programs" "run," "run," "RUN!")
+(test "string-tokenize" '("Help" "make" "programs" "run," "run," "RUN!")
        (string-tokenize "Help make programs run, run, RUN!"))
-(test* "string-tokenize" '("Help" "make" "programs" "run" "run" "RUN")
+(test "string-tokenize" '("Help" "make" "programs" "run" "run" "RUN")
        (string-tokenize "Help make programs run, run, RUN!"
                         char-set:letter))
-(test* "string-tokenize" '("programs" "run" "run" "RUN")
+(test "string-tokenize" '("programs" "run" "run" "RUN")
        (string-tokenize "Help make programs run, run, RUN!"
                         char-set:letter 10))
-(test* "string-tokenize" '("elp" "make" "programs" "run" "run")
+(test "string-tokenize" '("elp" "make" "programs" "run" "run")
        (string-tokenize "Help make programs run, run, RUN!"
                         char-set:lower-case))
 
-(test* "string-filter" "rrrr"
+(test "string-filter" "rrrr"
        (string-filter #\r "Help make programs run, run, RUN!"))
-(test* "string-filter" "HelpmakeprogramsrunrunRUN"
+(test "string-filter" "HelpmakeprogramsrunrunRUN"
        (string-filter char-set:letter "Help make programs run, run, RUN!"))
 
-(test* "string-filter" "programsrunrun"
+(test "string-filter" "programsrunrun"
        (string-filter (lambda (c) (char-lower-case? c))
                       "Help make programs run, run, RUN!"
                       10))
-(test* "string-filter" ""
+(test "string-filter" ""
        (string-filter (lambda (c) (char-lower-case? c)) ""))
-(test* "string-delete" "Help make pogams un, un, RUN!"
+(test "string-delete" "Help make pogams un, un, RUN!"
        (string-delete #\r "Help make programs run, run, RUN!"))
-(test* "string-delete" "   , , !"
+(test "string-delete" "   , , !"
        (string-delete char-set:letter "Help make programs run, run, RUN!"))
-(test* "string-delete" " , , RUN!"
+(test "string-delete" " , , RUN!"
        (string-delete (lambda (c) (char-lower-case? c))
                       "Help make programs run, run, RUN!"
                       10))
-(test* "string-delete" ""
+(test "string-delete" ""
        (string-delete (lambda (c) (char-lower-case? c)) ""))
 
 ;;; Additional tests so that the suite at least touches all
 ;;; the functions.
 
-(or (<= 0 (string-hash "abracadabra" 20) 19)
-    (fail 'string-hash:1))
-(or (= (string-hash "abracadabra" 20) (string-hash "abracadabra" 20))
-    (fail 'string-hash:2))
-(or (= (string-hash "abracadabra" 20 2 7) (string-hash (substring "abracadabra" 2 7) 20))
-    (fail 'string.hash:3))
+(test #t (<= 0 (string-hash "abracadabra" 20) 19))
 
-(or (= (string-hash-ci "aBrAcAdAbRa" 20) (string-hash-ci "AbRaCaDaBrA" 20))
-    (fail 'string-hash-ci:1))
-(or (= (string-hash-ci "aBrAcAdAbRa" 20 2 7) 
-       (string-hash-ci (substring "AbRaCaDaBrA" 2 7) 20))
-    (fail 'string-hash-ci:2))
+(test #t (= (string-hash "abracadabra" 20) (string-hash "abracadabra" 20)))
 
-(or (string= "foo" "foo") (fail 'string=:1))
-(or (string= "foobar" "foo" 0 3) (fail 'string=:2))
-(or (string= "foobar" "barfoo" 0 3 3) (fail 'string=:3))
-(or (not (string= "foobar" "barfoo" 0 3 2 5)) (fail 'string=:4))
+(test #t (= (string-hash "abracadabra" 20 2 7)
+            (string-hash (substring "abracadabra" 2 7) 20)))
 
-(or (string<> "flo" "foo") (fail 'string<>:1))
-(or (string<> "flobar" "foo" 0 3) (fail 'string<>:2))
-(or (string<> "flobar" "barfoo" 0 3 3) (fail 'string<>:3))
-(or (not (string<> "foobar" "foobar" 0 3 0 3)) (fail 'string<>:4))
+(test #t (= (string-hash-ci "aBrAcAdAbRa" 20)
+            (string-hash-ci "AbRaCaDaBrA" 20)))
 
-(or (string<= "fol" "foo") (fail 'string<=:1))
-(or (string<= "folbar" "foo" 0 3) (fail 'string<=:2))
-(or (string<= "foobar" "barfoo" 0 3 3) (fail 'string<=:3))
-(or (not (string<= "foobar" "barfoo" 0 3 1 4)) (fail 'string<=:4))
+(test #t (= (string-hash-ci "aBrAcAdAbRa" 20 2 7)
+            (string-hash-ci (substring "AbRaCaDaBrA" 2 7) 20)))
 
-(or (string< "fol" "foo") (fail 'string<:1))
-(or (string< "folbar" "foo" 0 3) (fail 'string<:2))
-(or (string< "folbar" "barfoo" 0 3 3) (fail 'string<:3))
-(or (not (string< "foobar" "barfoo" 0 3 1 4)) (fail 'string<:4))
+(test #t (string= "foo" "foo"))
+(test #t (string= "foobar" "foo" 0 3))
+(test #t (string= "foobar" "barfoo" 0 3 3))
+(test #t (not (string= "foobar" "barfoo" 0 3 2 5)))
 
-(or (string>= "foo" "fol") (fail 'string>=:1))
-(or (string>= "foo" "folbar" 0 3 0 3) (fail 'string>=:2))
-(or (string>= "barfoo" "foo" 3 6 0) (fail 'string>=:3))
-(or (not (string>= "barfoo" "foobar" 1 4 0 3)) (fail 'string>=:4))
+(test #t (string<> "flo" "foo"))
+(test #t (string<> "flobar" "foo" 0 3))
+(test #t (string<> "flobar" "barfoo" 0 3 3))
+(test #t (not (string<> "foobar" "foobar" 0 3 0 3)))
 
-(or (string> "foo" "fol") (fail 'string>:1))
-(or (string> "foo" "folbar" 0 3 0 3) (fail 'string>:2))
-(or (string> "barfoo" "fol" 3 6 0) (fail 'string>:3))
-(or (not (string> "barfoo" "foobar" 1 4 0 3)) (fail 'string>:4))
+(test #t (string<= "fol" "foo"))
+(test #t (string<= "folbar" "foo" 0 3))
+(test #t (string<= "foobar" "barfoo" 0 3 3))
+(test #f (string<= "foobar" "barfoo" 0 3 1 4))
 
-(or (string-ci= "Foo" "foO") (fail 'string-ci=:1))
-(or (string-ci= "Foobar" "fOo" 0 3) (fail 'string-ci=:2))
-(or (string-ci= "Foobar" "bArfOo" 0 3 3) (fail 'string-ci=:3))
-(or (not (string-ci= "foobar" "BARFOO" 0 3 2 5)) (fail 'string-ci=:4))
+(test #t (string< "fol" "foo"))
+(test #t (string< "folbar" "foo" 0 3))
+(test #t (string< "folbar" "barfoo" 0 3 3))
+(test #t (not (string< "foobar" "barfoo" 0 3 1 4)))
 
-(or (string-ci<> "flo" "FOO") (fail 'string-ci<>:1))
-(or (string-ci<> "FLOBAR" "foo" 0 3) (fail 'string-ci<>:2))
-(or (string-ci<> "flobar" "BARFOO" 0 3 3) (fail 'string-ci<>:3))
-(or (not (string-ci<> "foobar" "FOOBAR" 0 3 0 3)) (fail 'string-ci<>:4))
+(test #t (string>= "foo" "fol"))
+(test #t (string>= "foo" "folbar" 0 3 0 3))
+(test #t (string>= "barfoo" "foo" 3 6 0))
+(test #t (not (string>= "barfoo" "foobar" 1 4 0 3)))
 
-(or (string-ci<= "FOL" "foo") (fail 'string-ci<=:1))
-(or (string-ci<= "folBAR" "fOO" 0 3) (fail 'string-ci<=:2))
-(or (string-ci<= "fOOBAR" "BARFOO" 0 3 3) (fail 'string-ci<=:3))
-(or (not (string-ci<= "foobar" "BARFOO" 0 3 1 4)) (fail 'string-ci<=:4))
+(test #t (string> "foo" "fol"))
+(test #t (string> "foo" "folbar" 0 3 0 3))
+(test #t (string> "barfoo" "fol" 3 6 0))
+(test #t (not (string> "barfoo" "foobar" 1 4 0 3)))
 
-(or (string-ci< "fol" "FOO") (fail 'string-ci<:1))
-(or (string-ci< "folbar" "FOO" 0 3) (fail 'string-ci<:2))
-(or (string-ci< "folbar" "BARFOO" 0 3 3) (fail 'string-ci<:3))
-(or (not (string-ci< "foobar" "BARFOO" 0 3 1 4)) (fail 'string-ci<:4))
+(test #t (string-ci= "Foo" "foO"))
+(test #t (string-ci= "Foobar" "fOo" 0 3))
+(test #t (string-ci= "Foobar" "bArfOo" 0 3 3))
+(test #t (not (string-ci= "foobar" "BARFOO" 0 3 2 5)))
 
-(or (string-ci>= "FOO" "fol") (fail 'string-ci>=:1))
-(or (string-ci>= "foo" "FOLBAR" 0 3 0 3) (fail 'string-ci>=:2))
-(or (string-ci>= "BARFOO" "foo" 3 6 0) (fail 'string-ci>=:3))
-(or (not (string-ci>= "barfoo" "FOOBAR" 1 4 0 3)) (fail 'string-ci>=:4))
+(test #t (string-ci<> "flo" "FOO"))
+(test #t (string-ci<> "FLOBAR" "foo" 0 3))
+(test #t (string-ci<> "flobar" "BARFOO" 0 3 3))
+(test #t (not (string-ci<> "foobar" "FOOBAR" 0 3 0 3)))
 
-(or (string-ci> "FOO" "fol") (fail 'string-ci>:1))
-(or (string-ci> "foo" "FOLBAR" 0 3 0 3) (fail 'string-ci>:2))
-(or (string-ci> "barfoo" "FOL" 3 6 0) (fail 'string-ci>:3))
-(or (not (string-ci> "barfoo" "FOOBAR" 1 4 0 3)) (fail 'string-ci>:4))
+(test #t (string-ci<= "FOL" "foo"))
+(test #t (string-ci<= "folBAR" "fOO" 0 3))
+(test #t (string-ci<= "fOOBAR" "BARFOO" 0 3 3))
+(test #t (not (string-ci<= "foobar" "BARFOO" 0 3 1 4)))
 
-(or (string=? "abcd" (string-append/shared "a" "b" "c" "d"))
-    (fail 'string-append/shared))
+(test #t (string-ci< "fol" "FOO"))
+(test #t (string-ci< "folbar" "FOO" 0 3))
+(test #t (string-ci< "folbar" "BARFOO" 0 3 3))
+(test #t (not (string-ci< "foobar" "BARFOO" 0 3 1 4)))
 
-(or (let-values (((rest start end) (string-parse-start+end #t "foo" '(1 3 fnord))))
-      (and (= start 1)
-	   (= end 3)
-	   (equal? rest '(fnord))))
-    (fail 'string-parse-start+end:1))
-(or (call-with-current-continuation
-     (lambda (k)
-       (handle-exceptions exn
-         (k #t)
-	 (string-parse-start+end #t "foo" '(1 4))
-	 #f)))
-    (fail 'string-parse-start+end:2))
+(test #t (string-ci>= "FOO" "fol"))
+(test #t (string-ci>= "foo" "FOLBAR" 0 3 0 3))
+(test #t (string-ci>= "BARFOO" "foo" 3 6 0))
+(test #t (not (string-ci>= "barfoo" "FOOBAR" 1 4 0 3)))
 
-(or (let-values (((start end) (string-parse-final-start+end #t "foo" '(1 3))))
-      (and (= start 1)
-	   (= end 3)))
-    (fail 'string-parse-final-start+end:1))
+(test #t (string-ci> "FOO" "fol"))
+(test #t (string-ci> "foo" "FOLBAR" 0 3 0 3))
+(test #t (string-ci> "barfoo" "FOL" 3 6 0))
+(test #t (not (string-ci> "barfoo" "FOOBAR" 1 4 0 3)))
 
-(or (let-string-start+end (start end rest) #t "foo" '(1 3 fnord)
-      (and (= start 1)
-	   (= end 3)
-	   (equal? rest '(fnord))))
-    (fail 'let-string-start+end:1))
+(test #t (string=? "abcd" (string-append/shared "a" "b" "c" "d")))
 
-(or (check-substring-spec #t "foo" 1 3)
-    (fail 'check-substring-spec:1))
-(or (call-with-current-continuation
-     (lambda (k)
-       (handle-exceptions exn
-         (k #t)
-         (check-substring-spec #t "foo" 1 4)
-	 #f)))
-    (fail 'check-substring-spec:2))
+(test #t (let-values (((rest start end) (string-parse-start+end #t "foo" '(1 3 fnord))))
+           (and (= start 1)
+                (= end 3)
+                (equal? rest '(fnord)))))
 
-(or (substring-spec-ok? "foo" 1 3)
-    (fail 'substring-spec-ok?:1))
-(or (not (substring-spec-ok? "foo" 1 4))
-    (fail 'substring-spec-ok?:2))
+(test #t (call-with-current-continuation
+          (lambda (k)
+            (handle-exceptions exn
+              (k #t)
+              (string-parse-start+end #t "foo" '(1 4))
+              #f))))
 
-(or (equal? (make-kmp-restart-vector "") '#())
-    (fail 'make-kmp-restart-vector:1))
-(or (equal? (make-kmp-restart-vector "a") '#(-1))
-    (fail 'make-kmp-restart-vector:2))
+(test #t (let-values (((start end) (string-parse-final-start+end #t "foo" '(1 3))))
+           (and (= start 1)
+                (= end 3))))
+
+(test #t (let-string-start+end (start end rest) #t "foo" '(1 3 fnord)
+           (and (= start 1)
+                (= end 3)
+                (equal? rest '(fnord)))))
+
+(test-assert (check-substring-spec #t "foo" 1 3))
+
+(test-assert (call-with-current-continuation
+              (lambda (k)
+                (handle-exceptions exn
+                  (k #t)
+                  (check-substring-spec #t "foo" 1 4)
+                  #f))))
+
+(test-assert (substring-spec-ok? "foo" 1 3))
+
+(test-assert (not (substring-spec-ok? "foo" 1 4)))
+
+(test '#() (make-kmp-restart-vector ""))
+
+(test '#(-1) (make-kmp-restart-vector "a"))
+
 ; This seems right to me, but is it?
-(or (equal? (make-kmp-restart-vector "ab") '#(-1 0))
-    (fail 'make-kmp-restart-vector:3))
+(test '#(-1 0) (make-kmp-restart-vector "ab"))
+
 ; The following is from an example in the code, but I expect it is not right.
-(or (equal? (make-kmp-restart-vector "abdabx") '#(-1 0 0 -1 1 2))
-    (fail 'make-kmp-restart-vector:4))
+(test '#(-1 0 0 -1 1 2) (make-kmp-restart-vector "abdabx"))
 
 ; FIXME!  Implement tests for these:
 ;   string-kmp-partial-search
@@ -1682,19 +1644,16 @@
 ;
 ; Matthias.
 
-(or (equal? 1 (string-contains "aabc" "ab"))
-    (fail 'string-contains:regression:1))
+(test 1 (string-contains "aabc" "ab"))
 
-(or (equal? 5 (string-contains "ababdabdabxxas" "abdabx"))
-    (fail 'string-contains:regression:2))
+(test 5 (string-contains "ababdabdabxxas" "abdabx"))
 
-(or (equal? 1 (string-contains-ci "aabc" "ab"))
-    (fail 'string-contains-ci:regression:1))
+(test 1 (string-contains-ci "aabc" "ab"))
 
 ; (message continues)
 ;
-; PS: There is also an off-by-one error in the bounds check of the 
-; unoptimized version of string-contains that is included as commented out 
+; PS: There is also an off-by-one error in the bounds check of the
+; unoptimized version of string-contains that is included as commented out
 ; code in the reference implementation. This breaks things like
 ; (string-contains "xab" "ab") and (string-contains "ab" "ab").
 
@@ -1702,16 +1661,15 @@
 ; of SRFI-13 shipped with Larceny.  In a version of the code without
 ; the fix the following test will catch the bug:
 
-(or (equal? 0 (string-contains "ab" "ab"))
-    (fail 'string-contains:regression:2))
+(test 0 (string-contains "ab" "ab"))
 
 ; From: dvanhorn@emba.uvm.edu
 ; Date: Wed, 26 Mar 2003 08:46:41 +0100
 ;
 ; The SRFI document gives,
 ;
-;   string-filter s char/char-set/pred [start end] -> string 
-;   string-delete s char/char-set/pred [start end] -> string 
+;   string-filter s char/char-set/pred [start end] -> string
+;   string-delete s char/char-set/pred [start end] -> string
 ;
 ; Yet the reference implementation switches the order giving,
 ;
@@ -1722,24 +1680,21 @@
 ;   ...
 ;   (define (string-filter criterion s . maybe-start+end)
 ;
-; I reviewed the SRFI-13 mailing list and c.l.scheme, but found no mention of 
+; I reviewed the SRFI-13 mailing list and c.l.scheme, but found no mention of
 ; this issue.  Apologies if I've missed something.
 
-(or (call-with-current-continuation
-     (lambda (k)
-       (handle-exceptions exn
-         (k #f)
-         (string=? "ADR" (string-filter "abrAcaDabRa" char-set:upper-case)))))
-    (fail 'string-filter:regression:1))
+(test-assert (call-with-current-continuation
+              (lambda (k)
+                (handle-exceptions exn
+                  (k #f)
+                  (string=? "ADR" (string-filter "abrAcaDabRa" char-set:upper-case))))))
 
-(or (call-with-current-continuation
-     (lambda (k)
-       (handle-exceptions exn
-         (k #f)
-         (string=? "abrcaaba" (string-delete "abrAcaDabRa" char-set:upper-case)))))
-    (fail 'string-delete:regression:1))
+(test-assert (call-with-current-continuation
+              (lambda (k)
+                (handle-exceptions exn
+                  (k #f)
+                  (string=? "abrcaaba" (string-delete "abrAcaDabRa" char-set:upper-case))))))
 
-;;;
+(test-end "srfi-13")
 
-(writeln "Done.")
-
+(test-exit)
