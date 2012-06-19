@@ -1,26 +1,22 @@
 ; Test suite for SRFI-30
 ; 2004-01-01 / lth
 
-;(cond-expand (srfi-30))
+(use test)
 
-(define (writeln . xs)
-  (for-each display xs)
-  (newline))
-
-(define (fail token . more)
-  (writeln "Error: test failed: " token)
-  #f)
+(test-begin "srfi-30")
 
 ; Test basic functionality
 #|
-(fail 'comment-content-not-ignored:1)
+(test-assert #f)
 |#
 
 ; Test nesting/unnesting
 
 #|
-#||# (fail 'comment-content-not-ignored:2) |#
+#||# (test-assert #f) |#
 
 ; Test whitespace property?  Don't know how to do that.
 
-(writeln "Done.")
+(test-end "srfi-30")
+
+(test-exit)
