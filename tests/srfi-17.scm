@@ -1,57 +1,51 @@
 ; Test suite for SRFI-17
 ; 2004-01-01 / lth
 
-; (cond-expand (srfi-17))
+(use test)
 
-(define (writeln . xs)
-  (for-each display xs)
-  (newline))
+(test-begin "srfi-17")
 
-(define (fail token . more)
-  (writeln "Error: test failed: " token)
-  #f)
+(test '(37 . 2)
+      (let ((v (cons 1 2)))
+        (set! (car v) 37)
+        v))
 
-(or (equal? '(37 . 2) (let ((v (cons 1 2)))
-			(set! (car v) 37)
-			v))
-    (fail 'car))
+(test '(1 . 37)
+      (let ((v (cons 1 2)))
+        (set! (cdr v) 37)
+        v))
 
-(or (equal? '(1 . 37) (let ((v (cons 1 2)))
-			(set! (cdr v) 37)
-			v))
-    (fail 'cdr))
+(test '((37 2) 3)
+      (let ((v (list (list 1 2) 3)))
+        (set! (caar v) 37)
+        v))
 
-(or (equal? '((37 2) 3) (let ((v (list (list 1 2) 3)))
-			(set! (caar v) 37)
-			v))
-    (fail 'caar))
+(test '(1 37 3)
+      (let ((v (list 1 2 3)))
+        (set! (cadr v) 37)
+        v))
 
-(or (equal? '(1 37 3) (let ((v (list 1 2 3)))
-			(set! (cadr v) 37)
-			v))
-    (fail 'cadr))
+(test '((1 . 37) 3)
+      (let ((v (list (list 1 2) 3)))
+        (set! (cdar v) 37)
+        v))
 
-(or (equal? '((1 . 37) 3) (let ((v (list (list 1 2) 3)))
-			(set! (cdar v) 37)
-			v))
-    (fail 'cdar))
-
-(or (equal? '(1 2 . 37) (let ((v (list 1 2 3)))
-			  (set! (cddr v) 37)
-			  v))
-    (fail 'cddr))
+(test '(1 2 . 37)
+      (let ((v (list 1 2 3)))
+        (set! (cddr v) 37)
+        v))
 
 ; Oh, I grow weak...
 
-(or (equal? '#(1 2 37) (let ((v (vector 1 2 3)))
-			 (set! (vector-ref v 2) 37)
-			 v))
-    (fail 'vector-ref))
+(test '#(1 2 37)
+      (let ((v (vector 1 2 3)))
+        (set! (vector-ref v 2) 37)
+        v))
 
-(or (equal? "ab%" (let ((v "abc"))
-		    (set! (string-ref v 2) #\%) ; 37
-		    v))
-    (fail 'string-ref))
+(test "ab%"
+      (let ((v "abc"))
+        (set! (string-ref v 2) #\%) ; 37
+        v))
 
 ; Test the ability to define our own setters.
 
@@ -61,20 +55,20 @@
 
 (set! (setter glarg-ref) glarg-set!)
 
-(or (equal? 37 (let ((v (make-glarg 0)))
-		 (set! (glarg-ref v) 37)
-		 (glarg-ref v)))
-    (fail 'glarg-ref))
+(test 37 (let ((v (make-glarg 0)))
+           (set! (glarg-ref v) 37)
+           (glarg-ref v)))
 
 ; getter-with-setters
 
 (define (make-blarg x) (vector x))
-(define blarg-ref (getter-with-setter (lambda (x) (vector-ref x 0)) 
-				      (lambda (x y) (vector-set! x 0 y))))
+(define blarg-ref (getter-with-setter (lambda (x) (vector-ref x 0))
+                                      (lambda (x y) (vector-set! x 0 y))))
 
-(or (equal? 37 (let ((v (make-blarg 0)))
-		 (set! (blarg-ref v) 37)
-		 (blarg-ref v)))
-    (fail 'blarg-ref))
+(test 37 (let ((v (make-blarg 0)))
+           (set! (blarg-ref v) 37)
+           (blarg-ref v)))
 
-(writeln "Done.")
+(test-end "srfi-17")
+
+(test-exit)
