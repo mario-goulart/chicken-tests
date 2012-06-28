@@ -1687,13 +1687,13 @@
               (lambda (k)
                 (handle-exceptions exn
                   (k #f)
-                  (string=? "ADR" (string-filter "abrAcaDabRa" char-set:upper-case))))))
+                  (string=? "ADR" (string-filter char-set:upper-case "abrAcaDabRa"))))))
 
 (test-assert (call-with-current-continuation
               (lambda (k)
                 (handle-exceptions exn
                   (k #f)
-                  (string=? "abrcaaba" (string-delete "abrAcaDabRa" char-set:upper-case))))))
+                  (string=? "abrcaaba" (string-delete char-set:upper-case "abrAcaDabRa"))))))
 
 (test-end "srfi-13")
 
